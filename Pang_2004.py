@@ -1,0 +1,282 @@
+import pygame
+import os
+
+#######################################################
+# Basic Setting (Must Do!!!)
+pygame.init() #Reset
+
+# Set screen size
+screen_width = 640 # Width size
+screen_height = 480 # Height size
+screen = pygame.display.set_mode((screen_width, screen_height))
+
+# Set title of the screen
+pygame.display.set_caption("Pang Pang") # title of the game
+
+# FPS
+clock = pygame.time.Clock()
+#######################################################
+
+# 1. User Setting (Background screen, game image, positions, speed, font etc)
+current_path = os.path.dirname(__file__) # Call the location of current file
+image_path = os.path.join(current_path, "images") # Call the location of images
+
+# Background
+background = pygame.image.load(os.path.join(image_path, "background.png"))
+
+# Create stage
+stage = pygame.image.load(os.path.join(image_path, "stage.png"))
+stage_size = stage.get_rect().size
+stage_height = stage_size[1] # To put character under the stage
+
+# Create character
+character = pygame.image.load(os.path.join(image_path, "character.png"))
+character_size = character.get_rect().size
+character_width = character_size[0]
+character_height = character_size[1]
+character_x_pos = (screen_width / 2) - (character_width / 2)
+character_y_pos = screen_height - stage_height - character_height
+
+# Character moving direction
+character_to_x = 0
+
+# Caracter moving speed
+character_speed = 5
+
+# Create weapon
+weapon = pygame.image.load(os.path.join(image_path, "weapon.png"))
+weapon_size = weapon.get_rect()
+weapon_width = weapon_size[0]
+
+# Weapon can be shoted multple ways
+weapons = []
+# weapon moving speed
+weapon_speed = 10
+
+# Create ball(different for 4 sizes of the balls)
+ball_images = [
+  pygame.image.load(os.path.join(image_path, "baloon1.png")),
+  pygame.image.load(os.path.join(image_path, "baloon2.png")),
+  pygame.image.load(os.path.join(image_path, "baloon3.png")),
+  pygame.image.load(os.path.join(image_path, "baloon4.png"))
+]
+
+# Ball speed depends on the size
+ball_speed_y = [-18, -15, -12, -9]
+
+# Balls
+balls = []
+
+# Initial ball information
+balls.append({
+  "pos_x" : 50,   # x-pos of the ball
+  "pos_y" : 50,   # y-pos of the ball
+  "img_idx" : 0,  # index of the ball
+  "to_x" : 3,     # moving direction along the x-axis
+  "to_y" : -6,    # moving direction along the y-axis
+  "init_spd_y" : ball_speed_y[0]
+  })
+
+# Collidedd weapon, ball info
+weapon_to_remove = -1
+ball_to_remove = -1
+
+# Font justification
+game_font = pygame.font.Font(None, 40)
+total_time = 100
+start_ticks = pygame.time.get_ticks() # Start tick received
+
+
+# Game End message
+# TimeOut
+# Mission Complete
+# Game Over (chaters hit by ball, failed)
+game_result = "Game Over"
+
+running = True
+while running:
+  dt = clock.tick(60)
+
+  # 2. Event procession (Keyboard, Mouse)
+  for event in pygame.event.get():
+    if event.type == pygame.QUIT:
+      running = False
+    if event.type == pygame.KEYDOWN:
+      if event.key == pygame.K_LEFT:
+        character_to_x -= character_speed
+      elif event.key == pygame.K_RIGHT:
+        character_to_x += character_speed
+      elif event.key == pygame.K_SPACE:
+        weapon_x_pos = character_x_pos + (character_width / 2) - (weapon_width / 2)
+        weapon_y_pos = character_y_pos
+        weapons.append([weapon_x_pos, weapon_y_pos])
+
+    if event.type == pygame.KEYUP:
+      if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+        character_to_x = 0
+
+  # 3. Justification of the character position
+  character_x_pos += character_to_x
+
+  if character_x_pos < 0:
+    character_x_pos = 0
+  elif character_x_pos > screen_width - character_width:
+    character_x_pos = screen_width - character_width
+
+  # Manage weapon location
+  weapons = [[w[0], w[1] - weapon_speed] for w in weapons]
+
+  # Remove the weapon that reaches the ceiling
+  weapons = [[w[0], w[1]] for w in weapons if w[1] > 0]
+
+  # Ball location justification
+  for ball_idx, ball_val in enumerate(balls):
+    ball_pos_x = ball_val["pos_x"]
+    ball_pos_y = ball_val["pos_y"]
+    ball_img_idx = ball_val["img_idx"]
+
+    ball_size = ball_images[ball_img_idx].get_rect().size
+    ball_width = ball_size[0]
+    ball_height = ball_size[1]
+
+    # Change direction of the ball when it hits the wall
+    if ball_pos_x <= 0 or ball_pos_x > screen_width - ball_width:
+      ball_val["to_x"] = ball_val["to_x"] * -1
+
+    # Ball bounce when it touches the ground
+    if ball_pos_y >= screen_height - stage_height - ball_height:
+      ball_val["to_y"] = ball_val["to_y"] * -1
+    else:
+      ball_val["to_y"] += 0.5
+
+    ball_val["pos_x"] += ball_val["to_x"]
+    ball_val["pos_y"] += ball_val["to_y"]
+
+
+
+  #4. Collision Processtion
+
+  # Update character rect info
+  character_rect = character.get_rect()
+  character_rect.left = character_x_pos
+  character_rect.top = character_y_pos
+
+  for ball_idx, ball_val in enumerate(balls):
+    ball_pos_x = ball_val["pos_x"]
+    ball_pos_y = ball_val["pos_y"]
+    ball_img_idx = ball_val["img_idx"]
+
+    # Update ball rect info
+    ball_rect = ball_images[ball_img_idx].get_rect()
+    ball_rect.left = ball_pos_x
+    ball_rect.top = ball_pos_y
+
+    # Check collision btw ball and character
+    if character_rect.colliderect(ball_rect):
+      running = False
+      break
+
+    # Collision btw ball & weapons
+    for weapon_idx, weapon_val in enumerate(weapons):
+      weapon_pos_x = weapon_val[0]
+      weapon_pos_y = weapon_val[1]
+
+      # Update weapon rect info
+      weapon_rect = weapon.get_rect()
+      weapon_rect.left = weapon_pos_x
+      weapon_rect.top = weapon_pos_y
+
+      # Check collision btw ball and weapon
+      if weapon_rect.colliderect(ball_rect):
+        weapon_to_remove = weapon_idx # To delete collided weapon
+        ball_to_remove = ball_idx     # To delete collided ball
+
+        #  If the size of the ball is not the smallest
+        if ball_img_idx < 3:
+
+          # Size of the current ball
+          ball_width = ball_rect.size[0]
+          ball_height = ball_rect.size[1]
+
+          # Size of the divided ball
+          small_ball_rect =  ball_images[ball_img_idx + 1].get_rect()
+          small_ball_width = small_ball_rect.size[0]
+          small_ball_height = small_ball_rect.size[1]
+
+          # Ball moves towards left
+          balls.append({
+            "pos_x" : ball_pos_x + (ball_width / 2) - (small_ball_width / 2),   # x-pos of the ball
+            "pos_y" : ball_pos_y + (ball_height / 2) - (small_ball_height / 2),   # y-pos of the ball
+            "img_idx" : ball_img_idx + 1,  # index of the ball
+            "to_x" : -3,     # moving direction along the x-axis
+            "to_y" : -6,    # moving direction along the y-axis
+            "init_spd_y" : ball_speed_y[ball_img_idx + 1]
+            })
+
+          # Ball moves towards right
+          balls.append({
+            "pos_x" : ball_pos_x + (ball_width / 2) - (small_ball_width / 2),   # x-pos of the ball
+            "pos_y" : ball_pos_y + (ball_height / 2) - (small_ball_height / 2),   # y-pos of the ball
+            "img_idx" : ball_img_idx + 1,  # index of the ball
+            "to_x" : 3,     # moving direction along the x-axis
+            "to_y" : -6,    # moving direction along the y-axis
+            "init_spd_y" : ball_speed_y[ball_img_idx + 1]
+            })
+        break
+    else:
+      continue
+    break
+
+
+  # Remove collided ball or weapon
+  if ball_to_remove > -1:
+    del balls[ball_to_remove]
+    ball_to_remove = -1
+
+  if weapon_to_remove > -1:
+    del weapons[weapon_to_remove]
+    weapon_to_remove = -1
+
+  # If all balls were deleted, game end (success)
+  if len(balls) == 0:
+    game_result = "Mission Complete!!"
+    running = False
+
+
+
+
+
+  #5. Display on the screen
+  screen.blit(background, (0, 0))
+  for weapon_x_pos, weapon_y_pos in weapons:
+    screen.blit(weapon, (weapon_x_pos, weapon_y_pos))
+
+  for idx, val in enumerate(balls):
+    ball_pos_x = val["pos_x"]
+    ball_pos_y = val["pos_y"]
+    ball_img_idx = val["img_idx"]
+    screen.blit(ball_images[ball_img_idx], (ball_pos_x, ball_pos_y))
+
+  screen.blit(stage, (0, screen_height - stage_height))
+  screen.blit(character, (character_x_pos, character_y_pos))
+
+
+
+  elapsed_time = (pygame.time.get_ticks() - start_ticks) / 1000 # (s) unit
+  timer = game_font.render("Time : {}".format(int(total_time - elapsed_time)), True, (255, 255, 255))
+  screen.blit(timer, (10, 10))
+
+  # Time over
+  if total_time - elapsed_time <= 0:
+    game_result = "Time Over"
+    running = False
+  pygame.display.update()
+
+msg = game_font.render(game_result, True, (255, 255, 0))
+msg_rect = msg.get_rect(center=(int(screen_width / 2), int(screen_height / 2)))
+screen.blit(msg, msg_rect)
+pygame.display.update()
+
+# Time delay
+pygame.time.delay(2000)
+pygame.quit()
