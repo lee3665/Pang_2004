@@ -10,3 +10,4 @@ In order to launch this game you need to download pygame using the following ste
 3. download pygame by typing 'pip install pygame'
 4. Then you can launch this game
 
+![Screenshot 2024-12-18 at 10 26 04 PM copy](https://github.com/user-attachments/assets/489c7421-7397-4daf-b0f1-34500239995f)
